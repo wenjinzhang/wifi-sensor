@@ -37,7 +37,13 @@ user_index = 1
 activity_index = 0
 save_dir = './data/'
 
-
+'''
+Initializate figure  parameters to plot CSI in real-time
+'''
+plt.ion()
+plt.figure(1)
+his_var = [] # y-axis
+plot_data_size = 30 
 
 segment_index_ = 0
 for file in os.listdir(save_dir):
@@ -47,6 +53,8 @@ for file in os.listdir(save_dir):
         segment_index_ =int(file[2]) 
 
 segment_index_ = segment_index_ + 1
+
+
 
 def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3, nrx=3, subcarriers=30, var_thres_=20, act_dur_=200):
     '''
@@ -71,7 +79,7 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
     '''
     Create a cache for caching the variance 
     '''
-    var_array = np.zeros((int(array_size/segment_trigger)))
+    # var_array = np.zeros((int(array_size/segment_trigger)))
     
     '''
     Create a socket object for TCP/IP communication
@@ -92,15 +100,7 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
     Flag to remove the first detected segment: operating on the device
     '''
     flag = 0
-    
-    '''
-    Create a figure to plot CSI in real-time
-    '''
-    fig = plt.figure()
-    fig.set_size_inches(1.5, 1)   
-    ax = plt.gca()
 
-    
     seg_count = 0
     seg_flag = False    
     while True:
@@ -123,24 +123,27 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
             csi_array[0:ntx, 0:nrx, 0:subcarriers, 0] = csi_entry.csi[0:ntx, 0:nrx, 0:subcarriers]      
 
             if count % segment_trigger == 0:  
-                '''
-                Plot the CSI measurements in real time
-                '''
-                ax.clear() 
-                #ax.set_ylim(10,80)
-                # ax.plot(x, np.abs(csi_array[0, 0, 0, :]))
-                ax.plot(var_array)
-                ax.set_ylim(0,30)
-                ax.figure.canvas.draw()
 
                 '''
                 Calculate variance for every segment_trigger data points
                 '''
-                var_array = np.roll(var_array, 1, axis=0)
                 temp = np.abs(csi_array[0, 0, 0, 0:segment_trigger]) 
                 temp_var  = np.var(np.abs(csi_array[0, 0, 0, 0:segment_trigger])) 
-                var_array[0] = temp_var                 
-                
+                # start = time.time()             
+                '''
+                Plot the CSI measurements in real time
+                '''
+                if len(his_var) > plot_data_size:
+                    plt.clf()
+                    del his_var[0]
+                else:
+                    his_var.append(temp_var)
+                    plt.plot(his_var, c='r',ls='-', marker='o', mec='b',mfc='w')  
+                    #plt.plot(t, np.sin(t), 'o')
+                    plt.pause(0.000000001)
+                # end = time.time()
+                # print("cost", end - start)
+
                 '''
                 Segment the activity with the threshold 
                 '''
