@@ -45,4 +45,5 @@
 - Start Real_time Inference service
   >```python main.py```
 - Put ```http://127.0.0.1:5000``` to your brower
+![image](https://github.com/wenjinzhang/wifi-sensor/blob/master/img/realtime.png)
 
