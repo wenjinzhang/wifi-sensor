@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Activity Recognition</title>
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body style="text-align: center; ">
+<h1 style="font-size: 3em;"> Actvity Recognition</h1>
+
+<br>
+
+<h1 style="font-size: 5em;" id="result"> Loading</h1>
+
+<script type="text/javascript">
+    function show_act() {
+        host = 'http://127.0.0.1:5000/show_act';
+        $.ajax({
+            type: "GET",
+            contentType: 'application/json; charset=utf-8',
+            url: host,
+            dataType: "json",
+            data: '{}',
+            success: function (data) {
+                $("#result").text(data['result']['act'])
+                console.log(data['result']['act'])
+            },
+            error: function (data) {
+                console.log(data)
+            }
+        });
+    }
+    // show_act()
+    clock = setInterval(show_act, 200);
+</script>
+</body>
+
+</html>

@@ -21,13 +21,13 @@ Parameters:
 - act_dur: durating of an activity to segment
 '''
 
-HOST = '192.168.2.186' 
+HOST = '192.168.1.100' 
 PORT = 8080
 array_size = 1000   
 segment_trigger = 25 
 sample_rate = 100
 var_thres = 15 
-act_dur = sample_rate*3
+act_dur = sample_rate * 3
 
 '''
 user_index: index of the user in the system
@@ -53,7 +53,6 @@ for file in os.listdir(save_dir):
         segment_index_ =int(file[2]) 
 
 segment_index_ = segment_index_ + 1
-
 
 
 def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3, nrx=3, subcarriers=30, var_thres_=20, act_dur_=200):
@@ -139,10 +138,7 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
                 else:
                     his_var.append(temp_var)
                     plt.plot(his_var, c='r',ls='-', marker='o', mec='b',mfc='w')  
-                    #plt.plot(t, np.sin(t), 'o')
                     plt.pause(0.000000001)
-                # end = time.time()
-                # print("cost", end - start)
 
                 '''
                 Segment the activity with the threshold 
@@ -153,7 +149,7 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
                 elif seg_flag == True:
                     seg_count = seg_count + 1 
                     if temp_var < var_thres_ and seg_count > int(act_dur_/segment_trigger):
-                        if int(seg_count*segment_trigger) < array_size:
+                        if int(seg_count * segment_trigger) < array_size:
                             temp = csi_array[:, :, :, 0:int(seg_count*segment_trigger)]
                         else:
                             temp = csi_array[:, :, :, :]
@@ -163,10 +159,6 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
                         seg_count = 0
                         seg_flag = False
 
-            
-            #if count % segment_trigger == 0 and count>1250:
-            #    segment_index = csi_segmentation_spectrogram_label(csi_array[:, :, :, :], tx=0, rx=0, fs=sample_rate, u_index=user_index, act_index=activity_index, threshold=4, directory=save_dir, segment_index=segment_index_) 
-            #    segment_index_ = segment_index
             count = count + 1
         except OSError:
             continue
