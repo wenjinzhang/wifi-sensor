@@ -120,7 +120,7 @@ def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3,
                     seg_flag = True 
                 elif seg_flag == True:
                     seg_count = seg_count + 1 
-                    if temp_var < var_thres_ and seg_count > int(act_dur_/segment_trigger):
+                    if temp_var < var_thres_ and seg_count > int(act_dur/segment_trigger):
                         if int(seg_count * segment_trigger) < array_size:
                             temp = csi_array[:, :, :, 0:int(seg_count*segment_trigger)]
                         else:
