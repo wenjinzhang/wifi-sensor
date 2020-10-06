@@ -3,18 +3,49 @@
 <head>
     <meta charset="utf-8">
     <title>Activity Recognition</title>
-    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
-    <script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.staticfile.org/popper.js/1.15.0/umd/popper.min.js"></script>
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdn.staticfile.org/vue/2.2.2/vue.min.js"></script>
 </head>
 <body style="text-align: center; ">
+
 <h1 style="font-size: 3em;"> Actvity Recognition</h1>
 
 <br>
-
-<h1 style="font-size: 5em;" id="result"> Loading</h1>
-
+{% raw %}
+<div class="container" id="app">          
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Segmentation start time</th>
+          <th>Segmentation ending time</th>
+          <th>Inference time(s)</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="act in acts">
+          <td>{{act.start_time}}</td>
+          <td>{{act.end_time}}</td>
+          <td>{{act.inference_time}}</td>
+          <td>{{act.type}}</td>
+        </tr>
+      </tbody>
+  </table>
+</div>
+{% endraw %}
 <script type="text/javascript">
+    // var activities = []
+    var vue = new Vue({
+        el: '#app',
+        data: {
+            acts: [],
+            name: "test"
+        }
+    })
+
     function show_act() {
         host = 'http://127.0.0.1:5000/show_act';
         $.ajax({
@@ -24,11 +55,14 @@
             dataType: "json",
             data: '{}',
             success: function (data) {
-                $("#result").text(data['result']['act'])
-                console.log(data['result']['act'])
+                // $("#result").text(data['result']['act'])
+                console.log(data['result'])
+                // activities = data['result']
+                vue.acts = data['result']
             },
             error: function (data) {
                 console.log(data)
+                clearInterval(clock)
             }
         });
     }
@@ -36,5 +70,4 @@
     clock = setInterval(show_act, 200);
 </script>
 </body>
-
 </html>
