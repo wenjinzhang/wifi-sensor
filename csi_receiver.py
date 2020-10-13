@@ -5,11 +5,12 @@ import time
 import re
 import csi_decoder
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
+import activity
+# import matplotlib.pyplot as plt
+# import matplotlib
+# matplotlib.use('TkAgg')
 
-from activity_segmentation import csi_segment_save_label
+# from activity_segmentation import csi_segment_save_label
 
 
 HOST = '192.168.1.100' 
@@ -19,10 +20,17 @@ sample_rate = 100
 act_dur = sample_rate * 3
 save_dir = './data/'
 
+kwargs = {
+    "host" : '192.168.1.100',
+    "port" : 8080,
+    "array_size" : array_size,
+    "act_dur" : act_dur,
+}
+
 '''
 Initializate figure  parameters to plot CSI in real-time
 '''
-def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3, nrx=3, subcarriers=30, var_thres_=20):
+def realtime_csi(host, port, array_size, act_dur=200, segment_trigger=25, ntx=3, nrx=3, subcarriers=30, var_thres_=20):
     '''
     Setup a TCP/IP connection between the receiver and the server computer
     Decode the received TCP/IP packets and extract CSI in real-time
@@ -40,10 +48,10 @@ def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3,
     '''
     init the plot
     '''
-    plt.ion()
-    plt.figure(1)
-    his_var = [] # y-axis
-    plot_data_size = 30 
+    # plt.ion()
+    # plt.figure(1)
+    # his_var = [] # y-axis
+    # plot_data_size = 30 
 
 
     '''
@@ -61,7 +69,8 @@ def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3,
     Create a socket object for TCP/IP communication
     '''
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind((HOST, PORT))
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((host, port))
     sock.listen()
     conn, addr = sock.accept()
     
@@ -104,19 +113,21 @@ def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3,
                 '''
                 Plot the CSI measurements in real time
                 '''
-                if len(his_var) > plot_data_size:
-                    plt.clf()
-                    del his_var[0]
-                else:
-                    his_var.append(temp_var)
-                    plt.plot(his_var, c='r',ls='-', marker='o', mec='b',mfc='w')  
-                    plt.pause(0.000000001)
+                # if len(his_var) > plot_data_size:
+                #     plt.clf()
+                #     del his_var[0]
+                # else:
+                #     his_var.append(temp_var)
+                #     plt.plot(his_var, c='r',ls='-', marker='o', mec='b',mfc='w')  
+                #     plt.pause(0.000000001)
 
                 '''
                 Segment the activity with the threshold 
                 '''
                 if temp_var > var_thres_ and not seg_flag:
                     print('Detect activity')
+                    act = activity.Activity(time.time(), True)
+                    activity.activities.append(act)
                     seg_flag = True 
                 elif seg_flag == True:
                     seg_count = seg_count + 1 
@@ -125,9 +136,11 @@ def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3,
                             temp = csi_array[:, :, :, 0:int(seg_count*segment_trigger)]
                         else:
                             temp = csi_array[:, :, :, :]
-                        print('temp', temp.shape)
+                        print('temp', )
                         # segment_index_ = csi_segment_save_label(temp, u_index=user_index, act_index=activity_index, directory=save_dir, segment_index=segment_index_)
                         # segment_index = segment_index_ 
+                        
+
                         seg_count = 0
                         seg_flag = False
 
@@ -141,5 +154,5 @@ def realtime_csi(HOST, PORT, array_size, act_dur=200, segment_trigger=25, ntx=3,
     conn.close()    
     sock.close()
 
-if __name__ == '__main__':
-    realtime_csi(HOST, PORT, array_size, act_dur=act_dur)
+# if __name__ == '__main__':
+#     realtime_csi(,HOST, PORT, array_size, act_dur=act_dur)

@@ -12,38 +12,52 @@ path_training = "dataset/training"
 
 def load_metadate(path):
     folders = os.listdir(path)
-    num_class = list(folders)
-    dataset = []
+
+    dict_class_id = {}
+
+    dict_user = {}
+
+    list_act_dataset = []
+
+    dict_users_dataset = {} # key => dataset means classId => dataset(mat, userId)
+
     classId = 0
     for folder in folders:
         if folder == ".DS_Store":
             continue
+
         class_path = os.path.join(path, folder)
-        for (root, dirs, files) in os.walk(class_path):
-            for name in files:
-                file_path = os.path.join(root, name)
-                if not file_path.endswith(".DS_Store"):
+
+        dict_class_id[classId] = folder
+        # print("----->>>>>path", class_path)
+        user_id = 0
+
+        dict_users_dataset[folder] = []
+        for user in sorted(os.listdir(class_path)):
+            if user == ".DS_Store":
+                continue
+            dict_user[user_id] = user
+            user_path = os.path.join(class_path, user)
+            
+            for file_name in os.listdir(user_path):
+               file_path = os.path.join(user_path, file_name) 
+               if not file_path.endswith(".DS_Store"):
                     # print(file_path)
                     meta_data = scio.loadmat(file_path)
-                    # time_data = np.moveaxis(meta_data['data_time'], -1, 0)
+
                     time_data = meta_data['data_time']
                     sample = (time_data, classId)
-                    dataset.append(sample)
-                    print(file_path, classId)
-        print(folder, classId)
+                    list_act_dataset.append(sample)
+
+                    dict_users_dataset[folder].append((time_data, user_id))
+                    # print(file_path, classId, user_id, folder)
+
+            user_id += 1
+        
+        # print(folder, classId)
         classId += 1
-    return dataset
 
-training_data = load_metadate(path_training)
-testing_data = load_metadate(path_testing)
-
-# for x, y in training_data[:10]:
-#     print(x.shape)
-
-# mix data
-random.shuffle(training_data)
-random.shuffle(testing_data)
-scaler = MinMaxScaler(feature_range=(0, 1))
+    return dict_class_id, dict_user, list_act_dataset, dict_users_dataset 
 
 
 def get_data_freq(data_time):
@@ -64,27 +78,47 @@ def get_data_freq(data_time):
     # data_freq = np.expand_dims(data_freq, axis=2)
     return data_freq
 
-def generate_dataset(data, scaler):
+
+def generate_dataset(dataset, scaler):
+    # mix data
+    random.shuffle(dataset)
     data_time = []
     data_freq = []
     labels = []
-    for features, label in data:
+    for features, label in dataset:
         if features.shape == (3, 3, 30, 325):
             features = np.absolute(features)
             features = np.reshape(features, (-1, 325))
-            # features = scaler.fit_transform(features)
+            features = scaler.fit_transform(features)
+            
             data_time.append(features)
             data_freq.append(get_data_freq(features))
             labels.append(label)
 
-    return np.array(data_time), np.array(data_freq), np.array(labels)
+    data_time = np.array(data_time)
+    data_time = np.expand_dims(data_time, axis=-1)
+    data_freq = np.array(data_freq)
+    data_freq = np.expand_dims(data_freq, axis=-1)
 
-train_data_time, train_data_freq, train_label = generate_dataset(training_data, scaler)
-test_data_time, test_data_freq, test_label  = generate_dataset(testing_data, scaler)
+    return (data_time, data_freq, np.array(labels))
 
 
-pickle_out = open("dataset.pickle","wb")
-pickle.dump((train_data_time, train_data_freq, train_label, 
-            test_data_time, test_data_freq, test_label ),
-            pickle_out)
-pickle_out.close()
+def save_to_pickle(data, file_name):
+    pickle_out = open("./pickle_data/{}.pickle".format(file_name),"wb")
+    pickle.dump(data, pickle_out)
+    # pickle.dump((train_data_time, train_data_freq, train_label, 
+    #         test_data_time, test_data_freq, test_label ),
+    #         pickle_out)
+    pickle_out.close()
+
+if __name__=="__main__":
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    dict_class_id, dict_user, list_act_dataset, dict_users_data = load_metadate(path_training)
+    tuple_act_dataset = generate_dataset(list_act_dataset, scaler)
+    save_to_pickle(tuple_act_dataset, "activity")
+
+    for key in dict_users_data:
+        dataset = generate_dataset(dict_users_data[key], scaler)
+        save_to_pickle(dataset, key)
+
+    save_to_pickle((dict_class_id, dict_user), "mapping")

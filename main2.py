@@ -12,12 +12,14 @@ import csi_decoder
 # import csi_receiver
 import multiprocessing
 import queue
+import pickle
 shared_resource_lock = threading.Lock()
 # global data to store the history csi
 queue = queue.Queue()
 # a dict list {start_time, end_time, inference time, type}
 activities = [
 ]
+
 sample_rate = 100
 act_dur = sample_rate * 3
 
@@ -34,14 +36,16 @@ def timestamp_to_str(timestamp):
     time_local = time.localtime(timestamp)
     return time.strftime("%H:%M:%S",time_local)
 
-def activity_dict(start_time="", end_time="", inference_time="", type=""):
+def activity_dict(start_time="", end_time="", inference_time="", act="", user=""):
     if inference_time != "":
         inference_time = round(inference_time, 5)
+        
     return {
         "start_time" : timestamp_to_str(start_time),
         "end_time" : timestamp_to_str(end_time),
         "inference_time": inference_time,
-        "type": type,
+        "act": act,
+        "user": user,
     }
 
 def realtime_csi(host, port, array_size, act_dur=200, segment_trigger=25, ntx=3, nrx=3, subcarriers=30, var_thres_=25):
@@ -168,24 +172,53 @@ def realtime_csi(host, port, array_size, act_dur=200, segment_trigger=25, ntx=3,
     conn.close()    
     sock.close()
 
-pretrained_model_ext = "./model/ext.h5"
-pretrained_model_actrec = "./model/actrec.h5"
-model_ext = load_model(pretrained_model_ext)
-model_actrec = load_model(pretrained_model_actrec)
+def load_models(model_type):
+    model_path = "./model/{}".format(model_type)
+    model_ext = load_model(os.path.join(model_path, "feature.h5"))
+    model_actrec = load_model(os.path.join(model_path, "classify.h5"))
+    return (model_ext, model_actrec)
+
+# model inference
+pickle_in = open("./pickle_data/mapping.pickle", "rb")
+(dict_class_id, dict_user) = pickle.load(pickle_in)
+
+dict_models = {"activity": load_models("activity")}
+
+for key in dict_class_id:
+    model_type = dict_class_id[key]
+    dict_models[model_type] = load_models(model_type)
+
 
 def inference():
     global shared_resource_lock, activity, activities
-    acts = ["Raising hand", "Walking", "Squating"]
+
     while True:
         if not queue.empty():
             activity = queue.get()
             now = time.time()
-            predict = model_actrec(model_ext([activity.data_time, activity.data_freq], training=False), training=False)
-            inference_time = time.time() - now
-            classId = np.argmax(predict)
+            
+            predict = dict_models["activity"][1](
+                dict_models["activity"][0]([activity.data_time, activity.data_freq], training=False), 
+                training=False
+                )
 
+            # index of activity
+            classId = np.argmax(predict)
+            # name of activity
+            act = dict_class_id[classId]
+
+            pre_user = dict_models[act][1](
+                dict_models[act][0]([activity.data_time, activity.data_freq], training=False), 
+                training=False
+                )
+
+            userId = np.argmax(pre_user)
+            user = dict_user[userId]
+
+            inference_time = time.time() - now
+            
             shared_resource_lock.acquire()
-            activities[0] = activity_dict(activity.start_time, activity.end_time, inference_time, acts[classId])
+            activities[0] = activity_dict(activity.start_time, activity.end_time, inference_time, act, user)
             shared_resource_lock.release()
 
 

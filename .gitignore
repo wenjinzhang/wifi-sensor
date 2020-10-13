@@ -3,3 +3,7 @@ data/*
 dataset/*
 model/*
 dataset.pickle
+.vscode
+.DS_Store 
+*/.DS_Store
+*.pickle

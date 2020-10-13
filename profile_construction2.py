@@ -162,7 +162,7 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
             count = count + 1
         except OSError:
             continue
-
+        
         except KeyboardInterrupt:
             conn.close()
             break
