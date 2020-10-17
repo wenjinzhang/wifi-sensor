@@ -7,7 +7,7 @@ import pickle
 from dnn_models import feature_extractor_base, user_recognizer, grad_base
 
 
-def train(model_type, no_of_class, batch_size=8, num_epoch=2):
+def train(model_type, no_of_class, batch_size=8, num_epoch=15):
     '''
     Parameters for training
     batch_size: batch size
@@ -30,14 +30,15 @@ def train(model_type, no_of_class, batch_size=8, num_epoch=2):
     print('data_freq:', train_data_freq.shape)
     print('label:', train_label.shape)
     
+    
     '''
     Construct dataset for training
     '''
     n_samples = train_data_time.shape[0]
     train_label = tf.one_hot(train_label, depth=no_of_class) 
-    dataset = tf.data.Dataset.from_tensor_slices((train_data_time, train_data_freq, train_label))
+    dataset_train = tf.data.Dataset.from_tensor_slices((train_data_time, train_data_freq, train_label))
 
-    dataset_train = dataset.take(round(n_samples * 0.9))
+    # dataset_train = dataset.take(round(n_samples * 0.9))
     
     '''
     CNN model construction

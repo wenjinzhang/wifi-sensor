@@ -15,7 +15,8 @@ import queue
 import pickle
 shared_resource_lock = threading.Lock()
 # global data to store the history csi
-queue = queue.Queue()
+# queue = queue.Queue()
+queue = multiprocessing.Queue()
 # a dict list {start_time, end_time, inference time, type}
 activities = [
 ]
@@ -30,26 +31,10 @@ kwargs = {
     "act_dur" : act_dur,
 }
 
-def timestamp_to_str(timestamp):
-    if timestamp == "":
-        return ""
-    time_local = time.localtime(timestamp)
-    return time.strftime("%H:%M:%S",time_local)
 
-def activity_dict(start_time="", end_time="", inference_time="", act="", user=""):
-    if inference_time != "":
-        inference_time = round(inference_time, 5)
-        
-    return {
-        "start_time" : timestamp_to_str(start_time),
-        "end_time" : timestamp_to_str(end_time),
-        "inference_time": inference_time,
-        "act": act,
-        "user": user,
-    }
 
 def realtime_csi(host, port, array_size, act_dur=200, segment_trigger=25, ntx=3, nrx=3, subcarriers=30, var_thres_=25):
-    global shared_resource_lock, activity, activities
+    global shared_resource_lock, activities
     '''
     Setup a TCP/IP connection between the receiver and the server computer
     Decode the received TCP/IP packets and extract CSI in real-time
@@ -140,7 +125,8 @@ def realtime_csi(host, port, array_size, act_dur=200, segment_trigger=25, ntx=3,
                     shared_resource_lock.acquire()
 
                     # activities.append(activity_dict(activity.start_time))
-                    activities.insert(0, activity_dict(activity.start_time))
+                    
+                    activities.insert(0, activities)
                     shared_resource_lock.release()
 
                     seg_flag = True
@@ -190,7 +176,7 @@ for key in dict_class_id:
 
 
 def inference():
-    global shared_resource_lock, activity, activities
+    global shared_resource_lock, activities
 
     while True:
         if not queue.empty():
@@ -232,9 +218,9 @@ def show_act():
     return jsonify(result=activities)
 
 if __name__ == '__main__':
-    queue = multiprocessing.Queue()
-    # csi_receiver = multiprocessing.Process(target=csi_receiver.realtime_csi, args=queue, kwargs=csi_receiver.kwargs)
-    csi_receiver = threading.Thread(target=realtime_csi, kwargs=kwargs)
+
+    csi_receiver = multiprocessing.Process(target=realtime_csi, kwargs=kwargs)
+    # csi_receiver = threading.Thread(target=realtime_csi, kwargs=kwargs)
     classifer = threading.Thread(target=inference)
     csi_receiver.start()
     classifer.start()

@@ -5,7 +5,6 @@ import numpy as np
 import pickle
 from sklearn.preprocessing import MinMaxScaler
 from scipy import signal
-
 path_testing = "dataset/testing"
 path_training = "dataset/training"
 
@@ -89,7 +88,7 @@ def generate_dataset(dataset, scaler):
         if features.shape == (3, 3, 30, 325):
             features = np.absolute(features)
             features = np.reshape(features, (-1, 325))
-            features = scaler.fit_transform(features)
+            # features = scaler.fit_transform(features)
             
             data_time.append(features)
             data_freq.append(get_data_freq(features))

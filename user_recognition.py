@@ -8,9 +8,56 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import time
-matplotlib.use('TkAgg')
+import pickle
+from activity import Activity
+import requests
 
+matplotlib.use('TkAgg')
+from keras.models import load_model
 from activity_segmentation import csi_segment_save_label
+weberver = 'http://127.0.0.1:5000/activity'
+
+# load models
+def load_models(model_type):
+    model_path = "./model/{}".format(model_type)
+    model_ext = load_model(os.path.join(model_path, "feature.h5"))
+    model_actrec = load_model(os.path.join(model_path, "classify.h5"))
+    return (model_ext, model_actrec)
+
+# model inference
+pickle_in = open("./pickle_data/mapping.pickle", "rb")
+(dict_class_id, dict_user) = pickle.load(pickle_in)
+
+dict_models = {"activity": load_models("activity")}
+
+for key in dict_class_id:
+    model_type = dict_class_id[key]
+    dict_models[model_type] = load_models(model_type)
+
+
+def inference(activity):
+    now = time.time()
+    predict = dict_models["activity"][1](
+            dict_models["activity"][0]([activity.data_time, activity.data_freq], training=False), 
+            training=False
+            )
+
+    # index of activity
+    classId = np.argmax(predict)
+    # name of activity
+    act = dict_class_id[classId]
+
+    pre_user = dict_models[act][1](
+                dict_models[act][0]([activity.data_time, activity.data_freq], training=False), 
+                training=False
+                )
+
+    userId = np.argmax(pre_user)
+    user = dict_user[userId]
+    end_time = time.time()
+    inference_time = end_time  - now
+    activity.recognize(inference_time, act, user)
+    return activity
 
 '''
 Parameters:
@@ -47,17 +94,8 @@ plt.figure(1)
 his_var = [] # y-axis
 plot_data_size = 30 
 
-segment_index_ = 0
-for file in os.listdir(save_dir):
-    file = file[:-4] 
-    file = file.split('_') 
-    if len(file)>2 and int(file[2])>segment_index_:
-        segment_index_ =int(file[2]) 
 
-segment_index_ = segment_index_ + 1
-
-
-def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3, nrx=3, subcarriers=30, var_thres_=20, act_dur_=200):
+def realtime_csi(HOST, PORT, array_size, segment_trigger, ntx=3, nrx=3, subcarriers=30, var_thres_=20, act_dur_=200):
     '''
     Setup a TCP/IP connection between the receiver and the server computer
     Decode the received TCP/IP packets and extract CSI in real-time
@@ -153,7 +191,11 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
                 '''
                 if temp_var > var_thres_ and not seg_flag:
                     print('Detect activity')
-                    seg_flag = True 
+                    seg_flag = True
+                    activity = Activity(time.time())
+                    print(activity.to_string)
+                    requests.post(weberver, data=activity.to_string)
+
                 elif seg_flag == True:
                     seg_count = seg_count + 1 
                     if temp_var < var_thres_ and seg_count > int(act_dur_/segment_trigger):
@@ -162,8 +204,13 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
                         else:
                             temp = csi_array[:, :, :, :]
                         print('temp', temp.shape)
-                        segment_index_ = csi_segment_save_label(temp, u_index=user_index, act_index=activity_index, directory=save_dir, segment_index=time.time())
-                        segment_index = segment_index_ 
+                        # segment_index_ = csi_segment_save_label(temp, u_index=user_index, act_index=activity_index, directory=save_dir, segment_index=time.time())
+                        # segment_index = segment_index_
+                        if temp.shape == (3, 3, 30, 325):
+                            activity.set_csi(time.time(), temp)
+                            activity = inference(activity)
+                            requests.post(weberver, data=activity.to_string)
+                            print(activity.to_string)
                         seg_count = 0
                         seg_flag = False
 
@@ -179,4 +226,4 @@ def realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3,
     sock.close()
 
 if __name__ == '__main__':
-    realtime_csi(HOST, PORT, array_size, segment_trigger, segment_index_, ntx=3, nrx=3, subcarriers=30, var_thres_=var_thres, act_dur_=act_dur)
+    realtime_csi(HOST, PORT, array_size, segment_trigger, ntx=3, nrx=3, subcarriers=30, var_thres_=var_thres, act_dur_=act_dur)
